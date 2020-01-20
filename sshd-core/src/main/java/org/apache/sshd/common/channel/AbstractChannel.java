@@ -781,7 +781,7 @@ public abstract class AbstractChannel
     @Override
     public IoWriteFuture writePacket(Buffer buffer) throws IOException {
         Session s = getSession();
-        if (!isClosing()) {
+        if (!(state.get() == State.Closed || state.get() == State.Immediate)) {
             return s.writePacket(buffer);
         } else {
             if (log.isDebugEnabled()) {
@@ -922,9 +922,16 @@ public abstract class AbstractChannel
     protected abstract void doWriteExtendedData(byte[] data, int off, long len) throws IOException;
 
     protected void sendEof() throws IOException {
-        if (isClosing()) {
+        if (state.get() == State.Closed || state.get() == State.Immediate) {
             if (log.isDebugEnabled()) {
-                log.debug("sendEof({}) already closing or closed", this);
+                log.debug("sendEof({}) already closed", this);
+            }
+            return;
+        }
+
+        if (eofReceived.get()) {
+            if (log.isDebugEnabled()) {
+                log.debug("sendEof({}) EOF received", this);
             }
             return;
         }
